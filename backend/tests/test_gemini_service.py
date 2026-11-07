@@ -66,6 +66,7 @@ def test_text_structured_extraction_uses_schema_and_validates(monkeypatch):
             def create(**kwargs):
                 assert kwargs["response_format"]["schema"] == ExtractionResult.model_json_schema()
                 assert kwargs["timeout"] == gemini_service.GEMINI_REQUEST_TIMEOUT_SECONDS
+                assert kwargs["generation_config"] == {"thinking_level": "minimal"}
                 return SimpleNamespace(output_text=__import__("json").dumps(payload))
 
     monkeypatch.setattr(gemini_service, "make_client", lambda: FakeClient())
@@ -73,3 +74,28 @@ def test_text_structured_extraction_uses_schema_and_validates(monkeypatch):
 
     assert result.sample_id.value == "125767"
     assert result.date_received.value == "2026-11-07"
+
+
+def test_text_structured_extraction_accepts_configured_thinking_level(monkeypatch):
+    class FakeClient:
+        class interactions:
+            @staticmethod
+            def create(**kwargs):
+                assert kwargs["generation_config"] == {"thinking_level": "low"}
+                payload = {
+                    "label_type": "small",
+                    "sample_id": {"value": None, "status": "missing"},
+                    "date_sampled": {"value": None, "status": "unreadable"},
+                    "date_received": {"value": None, "status": "missing"},
+                    "machine": {"value": None, "status": "missing"},
+                    "component": {"value": None, "status": "missing"},
+                    "serial_number": {"value": None, "status": "missing"},
+                    "reference_lube": {"value": None, "status": "not_applicable"},
+                    "warnings": [],
+                }
+                return SimpleNamespace(output_text=__import__("json").dumps(payload))
+
+    monkeypatch.setattr(gemini_service, "make_client", lambda: FakeClient())
+    result, _ = gemini_service.extract_text("No readable values.", "2026-11-07", "low")
+
+    assert result.reference_lube.status == "not_applicable"

@@ -5,7 +5,13 @@ from typing import Any
 
 from google import genai
 
-from .config import DATA_DIR, GEMINI_REQUEST_TIMEOUT_SECONDS, MODEL_ID, gemini_api_key
+from .config import (
+    DATA_DIR,
+    GEMINI_REQUEST_TIMEOUT_SECONDS,
+    GEMINI_STRUCTURED_TEXT_THINKING_LEVEL,
+    MODEL_ID,
+    gemini_api_key,
+)
 from .schemas import ExtractionResult, user_supplied_date_field
 
 
@@ -28,7 +34,36 @@ def extraction_response_format() -> dict[str, Any]:
     }
 
 
-def extract_text(transcription: str, receiving_date: str) -> tuple[ExtractionResult, str]:
+def _usage_value(usage: Any, *names: str) -> int | None:
+    for name in names:
+        value = getattr(usage, name, None)
+        if value is not None:
+            return int(value)
+    return None
+
+
+def _print_inference_diagnostics(interaction: Any, started: float, thinking_level: str) -> None:
+    usage = getattr(interaction, "usage", None)
+    print(
+        "stage=structured-text diagnostics "
+        f"request_seconds={time.monotonic() - started:.2f} "
+        f"thinking_level={thinking_level} "
+        f"input_tokens={_usage_value(usage, 'prompt_token_count', 'input_tokens')} "
+        f"output_tokens={_usage_value(usage, 'response_token_count', 'output_tokens')} "
+        f"thought_tokens={_usage_value(usage, 'thoughts_token_count', 'thought_tokens')} "
+        f"status={getattr(interaction, 'status', 'unknown')}"
+    )
+
+
+def extract_text(
+    transcription: str,
+    receiving_date: str,
+    thinking_level: str = GEMINI_STRUCTURED_TEXT_THINKING_LEVEL,
+) -> tuple[ExtractionResult, str]:
+    if thinking_level not in {"minimal", "low", "medium", "high"}:
+        raise ValueError(
+            "thinking_level must be one of: minimal, low, medium, high"
+        )
     client = make_client()
     prompt = f"""Convert this prior video transcription into the MRG extraction schema.
 Only use facts present in the transcription; never infer or invent missing values.
@@ -45,12 +80,13 @@ Transcription:
         model=MODEL_ID,
         input=prompt,
         response_format=extraction_response_format(),
+        generation_config={"thinking_level": thinking_level},
         timeout=GEMINI_REQUEST_TIMEOUT_SECONDS,
     )
     raw = _text(interaction)
     result = ExtractionResult.model_validate_json(raw)
     result.date_received = user_supplied_date_field(receiving_date)
-    print(f"stage=structured-text completed elapsed_seconds={time.monotonic() - started:.2f}")
+    _print_inference_diagnostics(interaction, started, thinking_level)
     return result, raw
 
 

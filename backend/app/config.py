@@ -7,6 +7,9 @@ load_dotenv()
 
 MODEL_ID = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
 GEMINI_REQUEST_TIMEOUT_SECONDS = float(os.getenv("GEMINI_REQUEST_TIMEOUT_SECONDS", "120"))
+GEMINI_STRUCTURED_TEXT_THINKING_LEVEL = os.getenv(
+    "GEMINI_STRUCTURED_TEXT_THINKING_LEVEL", "minimal"
+)
 MAX_VIDEO_SIZE_BYTES = int(os.getenv("MAX_VIDEO_SIZE_MB", "50")) * 1024 * 1024
 MAX_VIDEO_DURATION_SECONDS = float(os.getenv("MAX_VIDEO_DURATION_SECONDS", "15"))
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"

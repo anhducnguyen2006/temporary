@@ -48,6 +48,10 @@ To isolate structured-output behavior without sending video:
 python scripts/test_gemini.py structured-text --receiving-date 2026-11-07
 ```
 
+`structured-text` defaults to `GEMINI_STRUCTURED_TEXT_THINKING_LEVEL=minimal`; set it to
+`low`, `medium`, or `high` in `.env` for comparison. The diagnostic reports request
+duration, thinking level, token usage when exposed, and final interaction status.
+
 The optional `two-step-video` diagnostic first performs the existing video transcription,
 then sends only that transcription to the structured-output request. The opt-in
 `background-video` diagnostic uses `background=True`, records its interaction ID in
