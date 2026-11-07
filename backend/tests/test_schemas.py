@@ -1,0 +1,48 @@
+import pytest
+from pydantic import ValidationError
+
+from app.schemas import ExtractionResult
+
+
+def field(value=None, status="missing", uncertain=False):
+    return {"value": value, "status": status, "uncertain": uncertain, "reason": None}
+
+
+def valid(**overrides):
+    result = {
+        "label_type": "large",
+        "sample_id": field("123779", "extracted"),
+        "date_sampled": field("2026-01-02", "extracted"),
+        "date_received": field("2026-01-03", "extracted"),
+        "machine": field("53279869", "extracted"),
+        "component": field("420 NDF", "extracted"),
+        "serial_number": field(None, "not_applicable"),
+        "reference_lube": field("Adjusting Side", "extracted"),
+        "warnings": [],
+    }
+    return {**result, **overrides}
+
+
+def test_large_mapping_contract():
+    result = ExtractionResult.model_validate(valid())
+    assert result.machine.value == "53279869"
+    assert result.serial_number.status == "not_applicable"
+
+
+def test_small_mapping_contract():
+    result = ExtractionResult.model_validate(valid(
+        label_type="small", machine=field("UP6509", "extracted"),
+        component=field("4 GS", "extracted"), serial_number=field("SN-1", "extracted"),
+        reference_lube=field(None, "not_applicable"),
+    ))
+    assert result.component.value == "4 GS"
+
+
+def test_missing_values_are_allowed():
+    assert ExtractionResult.model_validate(valid(sample_id=field(None, "unreadable"))).sample_id.value is None
+
+
+def test_invalid_structured_response_is_rejected():
+    with pytest.raises(ValidationError):
+        ExtractionResult.model_validate(valid(machine={"value": 123, "status": "extracted", "uncertain": False, "reason": None}))
+

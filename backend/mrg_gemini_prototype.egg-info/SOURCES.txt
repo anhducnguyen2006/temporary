@@ -1,0 +1,14 @@
+pyproject.toml
+app/__init__.py
+app/config.py
+app/gemini_service.py
+app/main.py
+app/schemas.py
+app/video_utils.py
+mrg_gemini_prototype.egg-info/PKG-INFO
+mrg_gemini_prototype.egg-info/SOURCES.txt
+mrg_gemini_prototype.egg-info/dependency_links.txt
+mrg_gemini_prototype.egg-info/requires.txt
+mrg_gemini_prototype.egg-info/top_level.txt
+tests/test_schemas.py
+tests/test_video_utils.py
