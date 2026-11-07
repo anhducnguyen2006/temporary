@@ -79,6 +79,46 @@ The compact `single_pass_json` path requires exactly the canonical JSON keys and
 them into the existing nested `ExtractionResult` locally. Its benchmark distinguishes provider
 success, JSON parsing, compact-schema validation, normalization, and field accuracy.
 
+## Multi-sample accuracy benchmarks
+
+The benchmark accepts either one video or a directory of videos. Keep manually reviewed
+annotations separate from model output. A directory may contain one JSON annotation per video;
+each annotation should include `video_filename`, the reviewed field values, `verified_fields`,
+and optional `field_status` values (`verified`, `unreadable`, or `not_applicable`).
+
+Create an annotation without overwriting an existing one:
+
+```bash
+cd backend
+python scripts/annotate_benchmark.py \
+  path/to/IMG_1881.mov \
+  --output ../examples/benchmark_annotations/IMG_1881.json
+```
+
+The utility opens the video locally, permits blank fields, and records only fields explicitly
+marked verified in accuracy denominators. It never calls Gemini or changes the existing
+`benchmark_annotations.json`.
+
+Run one controlled strategy over a directory:
+
+```bash
+cd backend
+../.venv/bin/python scripts/benchmark_extraction.py \
+  ../benchmark-videos \
+  --strategy two_step \
+  --receiving-date 2026-11-07 \
+  --annotations ../examples/benchmark_annotations \
+  --input-price-per-million 0 \
+  --output-price-per-million 0 \
+  --thought-price-per-million 0
+```
+
+The JSON report contains per-sample records and strategy-specific aggregate metrics, including
+verified-field denominators, complete-record denominators, sample ID/serial/component accuracy,
+validation rate, provider failure rate, median and p95 latency, observed token totals, and
+estimated cost. Run the command once per strategy; it processes each video once and does not
+automatically compare or retry strategies.
+
 ## Manual browser test
 
 Start the backend, then start the frontend in a second terminal:
