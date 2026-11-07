@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.schemas import ExtractionResult
+from app.schemas import ExtractionResult, user_supplied_date_field
 
 
 def field(value=None, status="missing", uncertain=False):
@@ -46,3 +46,8 @@ def test_invalid_structured_response_is_rejected():
     with pytest.raises(ValidationError):
         ExtractionResult.model_validate(valid(machine={"value": 123, "status": "extracted", "uncertain": False, "reason": None}))
 
+
+def test_receiving_date_is_a_user_supplied_field():
+    result = user_supplied_date_field("2026-11-07")
+    assert result.value == "2026-11-07"
+    assert "user" in (result.reason or "")

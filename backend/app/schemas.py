@@ -35,3 +35,10 @@ class AnalyzeResponse(BaseModel):
     diagnostic: dict[str, str | float] = Field(default_factory=dict)
     error: str | None = None
 
+
+def user_supplied_date_field(receiving_date: str) -> ExtractedField:
+    return ExtractedField(
+        value=receiving_date,
+        status="extracted",
+        reason="Supplied by the user; not inferred by Gemini.",
+    )
