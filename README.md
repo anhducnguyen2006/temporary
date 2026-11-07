@@ -34,6 +34,8 @@ uvicorn app.main:app --reload --app-dir backend
 ```
 
 The API is `POST /api/analyze` with multipart fields `video` and `receiving_date`.
+The backend defaults to `GEMINI_EXTRACTION_STRATEGY=two_step`; `direct` remains available
+for experimentation without changing the working Gemini integration.
 
 To run one explicit structured extraction against the verified sample:
 
@@ -56,6 +58,19 @@ The optional `two-step-video` diagnostic first performs the existing video trans
 then sends only that transcription to the structured-output request. The opt-in
 `background-video` diagnostic uses `background=True`, records its interaction ID in
 `backend/data/last-background-interaction.json`, and polls it without resubmitting.
+
+## Manual browser test
+
+Start the backend, then start the frontend in a second terminal:
+
+```bash
+uvicorn app.main:app --reload --app-dir backend
+cd frontend && npm run dev
+```
+
+Open the Vite URL, select `IMG_1880.mov`, choose a receiving date, and click **Analyze with
+Gemini** once. Wait for `Completed`, verify the video, handwritten identifiers, circled
+component, and editable fields, correct the serial number if needed, then download the CSV.
 
 ## Tests
 

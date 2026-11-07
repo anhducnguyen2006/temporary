@@ -14,7 +14,7 @@ function csvValue(value: string | null): string {
   return `"${protectedValue.replaceAll('"', '""')}"`;
 }
 
-function downloadCsv(result: ExtractionResult) {
+export function downloadCsv(result: ExtractionResult) {
   const headers = ["Sample ID", "Date Sampled", "Date Received", "Machine", "Component", "Serial Number", "Refrence Lube"];
   const values = fields.map(([key]) => result[key].value);
   const blob = new Blob([[headers, values].map((row) => row.map(csvValue).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
@@ -48,7 +48,7 @@ export default function App() {
     if (!file || isSubmitting) return setError("Choose an MP4 or MOV video first.");
     setError(""); setIsSubmitting(true); setStatus("Analyzing");
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 150_000);
+    const timeout = window.setTimeout(() => controller.abort(), 240_000);
     try {
       const response = await analyze(file, date, controller.signal);
       if (!response.result) throw new Error("Gemini returned no validated extraction.");
@@ -56,7 +56,8 @@ export default function App() {
     } catch (exception) {
       setStatus("Failed");
       setError(exception instanceof DOMException && exception.name === "AbortError"
-        ? "Analysis timed out after 150 seconds." : exception instanceof Error ? exception.message : "Analysis failed.");
+        ? "Analysis timed out after 240 seconds. No second request was started."
+        : exception instanceof Error ? exception.message : "Analysis failed.");
     } finally {
       window.clearTimeout(timeout); setIsSubmitting(false);
     }
@@ -68,12 +69,18 @@ export default function App() {
         <FileInput label="Sample video" placeholder="MP4 or MOV" accept="video/mp4,video/quicktime" value={file} onChange={(value) => { setFile(value); setStatus(value ? "File selected" : ""); }} />
         {previewUrl && <video controls src={previewUrl} style={{ width: "100%" }} />}
         <TextInput label="Receiving date" type="date" value={date} onChange={(e) => setDate(e.currentTarget.value)} />
-        <Button onClick={submit} loading={isSubmitting} disabled={!file || isSubmitting}>Analyze with Gemini</Button><Text>Status: {status}</Text>
+        <Button onClick={submit} loading={isSubmitting} disabled={!file || isSubmitting}>Analyze with Gemini</Button>
+        <Text>Status: {status === "Analyzing" ? "Analyzing video, then validating structured fields…" : status}</Text>
         {error && <Alert color="red" title="Analysis error">{error}</Alert>}
       </Stack></Card>
       <Card withBorder><Stack>
         <Title order={3}>Reviewed extraction</Title>
-        {result ? <><Text>Label type: <b>{result.label_type}</b></Text>{result.warnings.map((warning) => <Alert key={warning} color="yellow">{warning}</Alert>)}
+        {result ? <><Text>Label type: <b>{result.label_type}</b></Text>
+          <Alert color="yellow" title="Manual verification required">
+            Verify handwritten identifiers, especially Sample ID, Date Sampled, and Serial Number,
+            plus the physically circled component number and GS/NGS selection against the video.
+          </Alert>
+          {result.warnings.map((warning) => <Alert key={warning} color="yellow">{warning}</Alert>)}
           {fields.map(([key, label]) => <FieldEditor key={key} label={label} field={result[key]} onChange={(value) => update(key, value)} />)}
           <Group><Button onClick={() => downloadCsv(result)}>Download CSV</Button></Group>
           <JsonInput label="JSON preview" value={json} readOnly autosize minRows={5} /><Text size="xs" c="dimmed">Raw model output retained for diagnostics: {raw ? "yes" : "no"}</Text>

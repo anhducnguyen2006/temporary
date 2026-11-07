@@ -33,6 +33,8 @@ class AnalyzeResponse(BaseModel):
     result: ExtractionResult | None = None
     raw_output: str | None = None
     diagnostic: dict[str, str | float] = Field(default_factory=dict)
+    extraction_strategy: str | None = None
+    transcription: str | None = None
     error: str | None = None
 
 

@@ -5,8 +5,8 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
-from .config import MODEL_ID
-from .gemini_service import extract_video
+from .config import EXTRACTION_STRATEGY, MODEL_ID
+from .gemini_service import analyze_video
 from .schemas import AnalyzeResponse
 from .video_utils import save_and_validate_video
 
@@ -26,7 +26,11 @@ async def analyze(video: UploadFile = File(...), receiving_date: date = Form(...
         path = Path(directory) / f"input{suffix}"
         await save_and_validate_video(video, path)
         try:
-            result, raw = extract_video(path, receiving_date.isoformat())
+            result, raw, transcription = analyze_video(
+                path, receiving_date.isoformat(), EXTRACTION_STRATEGY
+            )
+        except TimeoutError as exc:
+            raise HTTPException(504, str(exc)) from exc
         except RuntimeError as exc:
             raise HTTPException(503, str(exc)) from exc
         except ValueError as exc:
@@ -35,5 +39,7 @@ async def analyze(video: UploadFile = File(...), receiving_date: date = Form(...
             raise HTTPException(502, f"Gemini request failed: {exc}") from exc
     return AnalyzeResponse(
         success=True, model=MODEL_ID, result=result, raw_output=raw,
+        extraction_strategy=EXTRACTION_STRATEGY,
+        transcription=transcription,
         diagnostic={"elapsed_seconds": round(time.monotonic() - started, 2)},
     )

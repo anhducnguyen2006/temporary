@@ -45,6 +45,7 @@ def test_structured_video_validates_and_overrides_model_receiving_date(monkeypat
     assert result.component.value == "5 NGS"
     assert result.date_received.value == "2026-11-07"
     assert '"value": "invented"' in raw
+    assert result.reference_lube.status == "not_applicable"
 
 
 def test_text_structured_extraction_uses_schema_and_validates(monkeypatch):
@@ -99,3 +100,26 @@ def test_text_structured_extraction_accepts_configured_thinking_level(monkeypatc
     result, _ = gemini_service.extract_text("No readable values.", "2026-11-07", "low")
 
     assert result.reference_lube.status == "not_applicable"
+
+
+def test_two_step_strategy_orchestrates_shared_pipeline(monkeypatch, tmp_path: Path):
+    calls = []
+
+    def fake_two_step(path, receiving_date):
+        calls.append((path, receiving_date))
+        return "result", "transcription", "raw"
+
+    monkeypatch.setattr(gemini_service, "extract_video_two_step", fake_two_step)
+    result, raw, transcription = gemini_service.analyze_video(
+        tmp_path / "sample.mov", "2026-11-07", "two_step"
+    )
+
+    assert (result, raw, transcription) == ("result", "raw", "transcription")
+    assert calls == [(tmp_path / "sample.mov", "2026-11-07")]
+
+
+def test_unknown_strategy_is_rejected(tmp_path: Path):
+    import pytest
+
+    with pytest.raises(ValueError, match="two_step"):
+        gemini_service.analyze_video(tmp_path / "sample.mov", "2026-11-07", "unknown")

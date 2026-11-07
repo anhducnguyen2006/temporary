@@ -21,7 +21,11 @@ def test_analyze_returns_validated_response_schema(monkeypatch):
         destination.write_bytes(b"video")
 
     monkeypatch.setattr(main, "save_and_validate_video", skip_video_validation)
-    monkeypatch.setattr(main, "extract_video", lambda path, receiving_date: (result, "{}"))
+    monkeypatch.setattr(
+        main,
+        "analyze_video",
+        lambda path, receiving_date, strategy: (result, "{}", "transcription"),
+    )
 
     response = TestClient(main.app).post(
         "/api/analyze",
@@ -33,3 +37,27 @@ def test_analyze_returns_validated_response_schema(monkeypatch):
     body = response.json()
     assert body["success"] is True
     assert body["result"]["sample_id"]["value"] == "001"
+    assert body["transcription"] == "transcription"
+
+
+def test_analyze_maps_provider_timeout_to_gateway_timeout(monkeypatch):
+    async def skip_video_validation(upload, destination):
+        destination.write_bytes(b"video")
+
+    monkeypatch.setattr(main, "save_and_validate_video", skip_video_validation)
+    monkeypatch.setattr(
+        main,
+        "analyze_video",
+        lambda path, receiving_date, strategy: (_ for _ in ()).throw(
+            TimeoutError("provider deadline reached")
+        ),
+    )
+
+    response = TestClient(main.app).post(
+        "/api/analyze",
+        files={"video": ("sample.mov", b"video", "video/quicktime")},
+        data={"receiving_date": "2026-11-07"},
+    )
+
+    assert response.status_code == 504
+    assert response.json()["detail"] == "provider deadline reached"

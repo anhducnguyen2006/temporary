@@ -7,6 +7,7 @@ from google import genai
 
 from .config import (
     DATA_DIR,
+    EXTRACTION_STRATEGY,
     GEMINI_REQUEST_TIMEOUT_SECONDS,
     GEMINI_STRUCTURED_TEXT_THINKING_LEVEL,
     MODEL_ID,
@@ -55,6 +56,28 @@ def _print_inference_diagnostics(interaction: Any, started: float, thinking_leve
     )
 
 
+def _apply_label_semantics(result: ExtractionResult) -> ExtractionResult:
+    if result.label_type == "small":
+        result.reference_lube = result.reference_lube.model_copy(
+            update={
+                "value": None,
+                "status": "not_applicable",
+                "uncertain": False,
+                "reason": "Not applicable to Small labels.",
+            }
+        )
+    elif result.label_type == "large":
+        result.serial_number = result.serial_number.model_copy(
+            update={
+                "value": None,
+                "status": "not_applicable",
+                "uncertain": False,
+                "reason": "Not applicable to Large labels.",
+            }
+        )
+    return result
+
+
 def extract_text(
     transcription: str,
     receiving_date: str,
@@ -67,10 +90,12 @@ def extract_text(
     client = make_client()
     prompt = f"""Convert this prior video transcription into the MRG extraction schema.
 Only use facts present in the transcription; never infer or invent missing values.
-The transcription must identify which Small-label number and GS/NGS option are visibly
-circled before combining them as component. Date Received must be exactly {receiving_date}
-and is supplied by the user, not the transcription. Preserve identifiers as strings,
-leading zeros, and uncertainty as a review signal rather than a probability.
+For Small labels, use RN for machine, SN for serial_number, set reference_lube to
+not_applicable, and combine the visibly circled number and GS/NGS option as component.
+For Large labels, use Equip ID for machine, Sample point for component, Ref Lube for
+reference_lube, and set serial_number to not_applicable. Date Received must be exactly
+{receiving_date} and is supplied by the user, not the transcription. Preserve identifiers
+as strings, leading zeros, and uncertainty as a review signal rather than a probability.
 
 Transcription:
 {transcription}"""
@@ -84,7 +109,7 @@ Transcription:
         timeout=GEMINI_REQUEST_TIMEOUT_SECONDS,
     )
     raw = _text(interaction)
-    result = ExtractionResult.model_validate_json(raw)
+    result = _apply_label_semantics(ExtractionResult.model_validate_json(raw))
     result.date_received = user_supplied_date_field(receiving_date)
     _print_inference_diagnostics(interaction, started, thinking_level)
     return result, raw
@@ -100,6 +125,18 @@ def extract_video_two_step(
     )
     result, raw = extract_text(transcription, receiving_date)
     return result, transcription, raw
+
+
+def analyze_video(
+    path: Path, receiving_date: str, strategy: str = EXTRACTION_STRATEGY
+) -> tuple[ExtractionResult, str, str | None]:
+    if strategy == "two_step":
+        result, transcription, raw = extract_video_two_step(path, receiving_date)
+        return result, raw, transcription
+    if strategy == "direct":
+        result, raw = extract_video(path, receiving_date)
+        return result, raw, None
+    raise ValueError("GEMINI_EXTRACTION_STRATEGY must be 'two_step' or 'direct'.")
 
 
 def inspect_extraction_schema() -> dict[str, Any]:
@@ -149,6 +186,7 @@ def run_video(path: Path, prompt: str | None = None) -> str:
                 {"type": "video", "uri": uploaded.uri, "mime_type": uploaded.mime_type},
                 {"type": "text", "text": prompt or "Describe and transcribe this video. Do not guess unreadable text."},
             ],
+            timeout=GEMINI_REQUEST_TIMEOUT_SECONDS,
         ))
     finally:
         client.files.delete(name=uploaded.name)
@@ -180,7 +218,7 @@ the schema."""
             timeout=GEMINI_REQUEST_TIMEOUT_SECONDS,
         )
         raw = _text(interaction)
-        result = ExtractionResult.model_validate_json(raw)
+        result = _apply_label_semantics(ExtractionResult.model_validate_json(raw))
         result.date_received = user_supplied_date_field(receiving_date)
         return result, raw
     finally:
