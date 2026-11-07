@@ -59,6 +59,26 @@ then sends only that transcription to the structured-output request. The opt-in
 `background-video` diagnostic uses `background=True`, records its interaction ID in
 `backend/data/last-background-interaction.json`, and polls it without resubmitting.
 
+## One-case extraction benchmarks
+
+The default `two_step` strategy remains the baseline. Optional single-pass diagnostics are
+`single_pass` (structured video) and `single-pass-json` (video with strict JSON text).
+Run exactly one paid benchmark at a time:
+
+```bash
+cd backend
+../.venv/bin/python scripts/benchmark_extraction.py \
+  path/to/IMG_1880.mov --strategy two_step --receiving-date 2026-11-07
+```
+
+Use `--strategy single_pass` or `--strategy single_pass_json` to compare one alternative.
+Manually verified annotations are kept separately in `examples/benchmark_annotations.json`;
+model output is never used as ground truth.
+
+The compact `single_pass_json` path requires exactly the canonical JSON keys and normalizes
+them into the existing nested `ExtractionResult` locally. Its benchmark distinguishes provider
+success, JSON parsing, compact-schema validation, normalization, and field accuracy.
+
 ## Manual browser test
 
 Start the backend, then start the frontend in a second terminal:

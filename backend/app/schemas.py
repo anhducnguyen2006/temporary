@@ -1,9 +1,17 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 FieldStatus = Literal["extracted", "unreadable", "missing", "not_applicable"]
 LabelType = Literal["large", "small", "unknown"]
+CanonicalField = Literal[
+    "sample_id",
+    "date_sampled",
+    "machine",
+    "component",
+    "serial_number",
+    "reference_lube",
+]
 
 
 class ExtractedField(BaseModel):
@@ -25,6 +33,28 @@ class ExtractionResult(BaseModel):
     serial_number: ExtractedField
     reference_lube: ExtractedField
     warnings: list[str] = Field(default_factory=list)
+
+
+class CompactExtraction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label_type: LabelType
+    sample_id: str | None = None
+    date_sampled: str | None = None
+    machine: str | None = None
+    component: str | None = None
+    serial_number: str | None = None
+    reference_lube: str | None = None
+    uncertain_fields: list[CanonicalField] = Field(default_factory=list)
+    unreadable_fields: list[CanonicalField] = Field(default_factory=list)
+
+    @field_validator("label_type", mode="before")
+    @classmethod
+    def normalize_label_type(cls, value: str) -> str:
+        normalized = str(value).lower()
+        if normalized in {"small", "large", "unknown"}:
+            return normalized
+        return value
 
 
 class AnalyzeResponse(BaseModel):

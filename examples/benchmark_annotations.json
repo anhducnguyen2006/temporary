@@ -1,0 +1,13 @@
+{
+  "IMG_1880.mov": {
+    "label_type": "small",
+    "sample_id": "125767",
+    "date_sampled": "2026-09-28",
+    "date_received": "2026-11-07",
+    "machine": "UP 7246",
+    "component": "5 NGS",
+    "serial_number": "My1207238",
+    "reference_lube": null,
+    "verified_fields": ["serial_number"]
+  }
+}

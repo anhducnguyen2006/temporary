@@ -1,0 +1,13 @@
+```json
+{
+  "label_type": "Small",
+  "sample_id": "125767",
+  "date_sampled": "9-28-26",
+  "machine": "UP 7246",
+  "component": "5 NGS",
+  "serial_number": "MY1207236",
+  "reference_lube": null,
+  "uncertain_fields": [],
+  "unreadable_fields": []
+}
+```

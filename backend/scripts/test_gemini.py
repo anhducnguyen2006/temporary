@@ -11,6 +11,7 @@ from app.config import MODEL_ID, gemini_api_key
 from app.gemini_service import (
     extract_text,
     extract_video,
+    extract_video_json,
     extract_video_two_step,
     inspect_extraction_schema,
     make_client,
@@ -26,7 +27,7 @@ def main() -> int:
     parser.add_argument(
         "command",
         choices=["models", "text", "image", "video", "structured-text", "structured-video",
-                 "two-step-video", "background-video", "schema"],
+                 "two-step-video", "single-pass-json", "background-video", "schema"],
     )
     parser.add_argument("path", nargs="?")
     parser.add_argument("--receiving-date", default=None)
@@ -75,6 +76,10 @@ Label type: Small"""
             elif args.command == "two-step-video":
                 result, transcription, raw = extract_video_two_step(Path(args.path), args.receiving_date)
                 print(f"Transcription: {transcription}")
+                print(f"Validated extraction: {result.model_dump_json(indent=2)}")
+                print(f"Raw output: {raw}")
+            elif args.command == "single-pass-json":
+                result, raw = extract_video_json(Path(args.path), args.receiving_date)
                 print(f"Validated extraction: {result.model_dump_json(indent=2)}")
                 print(f"Raw output: {raw}")
             else:

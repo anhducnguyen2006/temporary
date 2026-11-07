@@ -1,0 +1,10 @@
+{
+  "label_type": "small",
+  "sample_id": {"status": "extracted", "value": "125767"},
+  "date_sampled": {"status": "extracted", "value": "9-29-20"},
+  "date_received": {"status": "extracted", "value": "2026-11-07"},
+  "machine": {"status": "extracted", "value": "UP 7246"},
+  "component": {"status": "extracted", "value": "5 NGS"},
+  "serial_number": {"status": "extracted", "value": "MY1207236"},
+  "reference_lube": {"status": "not_applicable"}
+}
